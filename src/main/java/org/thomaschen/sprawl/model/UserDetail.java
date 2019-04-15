@@ -82,8 +82,12 @@ public class UserDetail {
      * Username Only Constructor
      */
     public UserDetail(String username) {
+        this.id = UUID.randomUUID();
         this.username = username;
         this.role = Role.USER;
+
+        this.createdAt = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
+        this.updatedAt = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
     }
 
     /**
@@ -92,10 +96,14 @@ public class UserDetail {
      * @param name of the user
      */
     public UserDetail(String email, String name, String username, Role role) {
+        this.id = UUID.randomUUID();
         this.email = email;
         this.name = name;
         this.username = username;
         this.role = role;
+
+        this.createdAt = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
+        this.updatedAt = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
     }
 
     public String getEmail() {
@@ -128,6 +136,14 @@ public class UserDetail {
 
     public void setUsername(String username) {
         this.username = username;
+    }
+
+    public UUID getId() {
+        return id;
+    }
+
+    public void setId(UUID id) {
+        this.id = id;
     }
 
     @Override

@@ -21,7 +21,7 @@ public class AuthController {
 
     // Get all UserDetails
     @GetMapping("/login")
-    public ResponseEntity login(Principal principal) {
+    public ResponseEntity<?> login(Principal principal) {
         UserDetail userDetail = userDetailRepository.findByUsername(principal.getName());
         if (userDetail == null) {
             userDetailRepository.save(new UserDetail(principal.getName()));
