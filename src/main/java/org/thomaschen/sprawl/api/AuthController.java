@@ -1,6 +1,7 @@
 package org.thomaschen.sprawl.api;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.thomaschen.sprawl.exception.ResourceNotFoundException;
@@ -19,14 +20,13 @@ public class AuthController {
     @Autowired
     UserDetailRepository userDetailRepository;
 
-    // Get all UserDetails
     @GetMapping("/login")
     public ResponseEntity<?> login(Principal principal) {
         UserDetail userDetail = userDetailRepository.findByUsername(principal.getName());
         if (userDetail == null) {
             userDetailRepository.save(new UserDetail(principal.getName()));
         }
-
-        return ResponseEntity.ok("Successfully Authenticated: " + principal.getName());
+        System.out.println("SUCCESSFUL LOGIN");
+        return ResponseEntity.ok().build();
     }
 }

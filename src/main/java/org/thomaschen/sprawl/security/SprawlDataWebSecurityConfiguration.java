@@ -34,19 +34,19 @@ public class SprawlDataWebSecurityConfiguration extends WebSecurityConfigurerAda
 
         http
                 .cors()
-                .and()
+                    .and()
                 .authorizeRequests()
                 //.antMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                .antMatchers("/api/admin/**").hasRole("ADMIN")
-                .anyRequest().authenticated()
-                .and()
+                    .antMatchers("/api/admin/**").hasRole("ADMIN")
+                    .anyRequest().authenticated()
+                    .and()
                 .httpBasic()
-                .realmName(REALM)
-                .authenticationEntryPoint(getBasicAuthEntryPoint())
-                .and()
+                    .realmName(REALM)
+                    .authenticationEntryPoint(getBasicAuthEntryPoint())
+                    .and()
                 .sessionManagement()
-                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                .and()
+                    .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                    .and()
                 .csrf().disable();
     }
 
