@@ -22,7 +22,7 @@ import java.util.*;
 @JsonIgnoreProperties(value = {"createdAt", "updatedAt"},
         allowGetters = true)
 @JsonIdentityInfo(generator = ObjectIdGenerators.PropertyGenerator.class, property = "id")
-public class UserDetail {
+public class User {
 
     /**
      * Unique identifier for a user.
@@ -53,18 +53,18 @@ public class UserDetail {
     private Calendar updatedAt;
 
     /**
-     * UserDetail's email
+     * User's email
      */
     private String email;
 
     /**
-     * UserDetail's username
+     * User's username
      */
     @Column(unique = true)
     private String username;
 
     /**
-     * UserDetail's name
+     * User's name
      */
     private String name;
 
@@ -74,14 +74,14 @@ public class UserDetail {
     /**
      * No Param Constructor
      */
-    public UserDetail() {
+    public User() {
 
     }
 
     /**
      * Username Only Constructor
      */
-    public UserDetail(String username) {
+    public User(String username) {
         this.id = UUID.randomUUID();
         this.username = username;
         this.role = Role.USER;
@@ -95,7 +95,7 @@ public class UserDetail {
      * @param email of the user
      * @param name of the user
      */
-    public UserDetail(String email, String name, String username, Role role) {
+    public User(String email, String name, String username, Role role) {
         this.id = UUID.randomUUID();
         this.email = email;
         this.name = name;
@@ -150,7 +150,7 @@ public class UserDetail {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        UserDetail that = (UserDetail) o;
+        User that = (User) o;
         return Objects.equals(id, that.id);
     }
 
@@ -161,7 +161,7 @@ public class UserDetail {
 
     @Override
     public String toString() {
-        return "UserDetail{" +
+        return "User{" +
                 "id=" + id +
                 ", createdAt=" + createdAt +
                 ", updatedAt=" + updatedAt +
