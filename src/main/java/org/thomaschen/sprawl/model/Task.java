@@ -1,7 +1,10 @@
 package org.thomaschen.sprawl.model;
 
 
+import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.ObjectIdGenerators;
+import io.swagger.annotations.ApiModelProperty;
 import org.hibernate.annotations.GenericGenerator;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
@@ -27,6 +30,7 @@ import java.util.UUID;
 @EntityListeners(AuditingEntityListener.class)
 @JsonIgnoreProperties(value = {"createdAt", "updatedAt"},
         allowGetters = true)
+@JsonIdentityInfo(generator = ObjectIdGenerators.PropertyGenerator.class, property = "id")
 public class Task implements Serializable {
 
     /**
@@ -61,6 +65,7 @@ public class Task implements Serializable {
     @Column(nullable = false, updatable = false)
     @Temporal(TemporalType.TIMESTAMP)
     @CreatedDate
+    @ApiModelProperty(hidden = true)
     private Calendar createdAt;
 
     /**
@@ -69,12 +74,14 @@ public class Task implements Serializable {
     @Column(nullable = false)
     @Temporal(TemporalType.TIMESTAMP)
     @LastModifiedDate
+    @ApiModelProperty(hidden = true)
     private Calendar updatedAt;
 
     /**
      * The Last Date/Time work started at
      */
     @Temporal(TemporalType.TIMESTAMP)
+    @ApiModelProperty(hidden = true)
     private Calendar lastWorkStartAt;
 
     /**
@@ -168,7 +175,7 @@ public class Task implements Serializable {
      * Accessor method for the time the Entry was initially created.
      * @return the creation time of the Entry in the form of a LocalDateTime object
      */
-    public Calendar getCreateTime() {
+    public Calendar getCreatedAt() {
         return createdAt;
     }
 
