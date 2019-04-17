@@ -16,6 +16,11 @@ public class TaskInProgressException extends RuntimeException {
         this.fieldValue = fieldValue;
     }
 
+    @Override
+    public synchronized Throwable fillInStackTrace() {
+        return this;
+    }
+
     public String getResourceName() {
         return resourceName;
     }
