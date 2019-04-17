@@ -50,11 +50,14 @@ public class TaskController {
         }
     }
 
-
     // Get all Tasks
     @GetMapping("/")
-    public List<Task> getAllTasks() {
-        return taskRepository.findByOwner(this.getUser());
+    public List<Task> getAllTasks(@RequestParam(value="tags", required=false) String tag) {
+        if (tag == null) {
+            return taskRepository.findByOwner(this.getUser());
+        } else {
+            return taskRepository.findAllByOwnerAndTags(this.getUser(), tag);
+        }
     }
 
     // Create a Task

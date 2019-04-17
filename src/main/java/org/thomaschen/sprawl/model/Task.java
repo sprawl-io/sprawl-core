@@ -22,6 +22,7 @@ import java.io.Serializable;
 import java.time.temporal.ChronoUnit;
 import java.util.Calendar;
 
+import java.util.List;
 import java.util.TimeZone;
 import java.util.UUID;
 
@@ -107,6 +108,9 @@ public class Task implements Serializable {
     @ApiModelProperty(hidden = true)
     private Boolean isFinished = false;
 
+    @ElementCollection(fetch = FetchType.EAGER)
+    private List<String> tags;
+
     /**
      * Default Constructor
      */
@@ -119,7 +123,7 @@ public class Task implements Serializable {
      * @param body the body of the task
      * @param duration the expected time to complete the task
      */
-    public Task(final User owner, final String title, final String body, final long duration) {
+    public Task(final User owner, final String title, final String body, final long duration, final List<String> tags) {
         this.taskId = UUID.randomUUID();
         this.owner = owner;
 
@@ -134,6 +138,7 @@ public class Task implements Serializable {
         this.lastWorkStartAt = null;
 
         this.isFinished = false;
+        this.tags = tags;
     }
 
     /**
@@ -281,5 +286,21 @@ public class Task implements Serializable {
 
     public void setIsFinished(Boolean finished) {
         isFinished = finished;
+    }
+
+    public List<String> getTags() {
+        return tags;
+    }
+
+    public void setTags(List<String> tags) {
+        this.tags = tags;
+    }
+
+    public void addTag(String tag) {
+        this.tags.add(tag);
+    }
+
+    public void removeTag(String tag) {
+        this.tags.remove(tag);
     }
 }
