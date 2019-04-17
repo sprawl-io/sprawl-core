@@ -2,6 +2,7 @@ package org.thomaschen.sprawl.model;
 
 
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
+import com.fasterxml.jackson.annotation.JsonIdentityReference;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.ObjectIdGenerators;
 import io.swagger.annotations.ApiModelProperty;
@@ -30,7 +31,7 @@ import java.util.UUID;
 @EntityListeners(AuditingEntityListener.class)
 @JsonIgnoreProperties(value = {"createdAt", "updatedAt"},
         allowGetters = true)
-@JsonIdentityInfo(generator = ObjectIdGenerators.PropertyGenerator.class, property = "id")
+@JsonIdentityInfo(generator = ObjectIdGenerators.PropertyGenerator.class, property = "taskId")
 public class Task implements Serializable {
 
     /**
@@ -40,12 +41,16 @@ public class Task implements Serializable {
     @GeneratedValue(generator = "uuid2")
     @GenericGenerator(name = "uuid2", strategy = "uuid2")
     @Column(columnDefinition = "BINARY(16)")
-    private UUID id;
+    @ApiModelProperty(hidden = true)
+    private UUID taskId;
 
     /**
-     * User who owns the task.
+     * board that owns the message
      */
-    private String user;
+    @ManyToOne
+    @ApiModelProperty(hidden = true)
+    @JsonIdentityReference(alwaysAsId = true)
+    private User owner;
 
     /**
      * Title of the task.
@@ -99,6 +104,7 @@ public class Task implements Serializable {
     private Long workedTime;
 
     @Column(nullable = false)
+    @ApiModelProperty(hidden = true)
     private Boolean isFinished = false;
 
     /**
@@ -113,8 +119,9 @@ public class Task implements Serializable {
      * @param body the body of the task
      * @param duration the expected time to complete the task
      */
-    public Task(final String title, final String body, final long duration) {
-        this.id = UUID.randomUUID();
+    public Task(final User owner, final String title, final String body, final long duration) {
+        this.taskId = UUID.randomUUID();
+        this.owner = owner;
 
         this.title = title;
         this.body = body;
@@ -130,162 +137,14 @@ public class Task implements Serializable {
     }
 
     /**
-     * Accessor method for UUID of Entry.
-     * @return the UUID of the task
-     */
-    public UUID getId() {
-        return id;
-    }
-
-    /**
-     * Accessor method for the Title of the task.
-     * @return the Title of the task
-     */
-    public String getTitle() {
-        return title;
-    }
-
-    /**
-     * Mutator method for Title of the task.
-     * Updates the lastModifiedTime field when called
-     * @param title the new title of the task
-     */
-    public void setTitle(String title) {
-        this.title = title;
-    }
-
-    /**
-     * Accessor method for Body of the task.
-     * @return the Body of the task
-     */
-    public String getBody() {
-        return body;
-    }
-
-    /**
-     * Mutator method for the Body of the task.
-     * Updates the lastModifiedTime field when called
-     * @param body the new body of the task
-     */
-    public void setBody(String body) {
-        this.body = body;
-    }
-
-    /**
-     * Accessor method for the time the Entry was initially created.
-     * @return the creation time of the Entry in the form of a LocalDateTime object
-     */
-    public Calendar getCreatedAt() {
-        return createdAt;
-    }
-
-
-    /**
-     * Accessor method for the expected time of the Entry.
-     * @return the expected time in the form of a Period object
-     */
-    public long getExpDuration() {
-        return expDuration;
-    }
-
-    /**
-     * Mutator method for expected duration of the Entry.
-     * @param duration the expected duration
-     */
-    public void setExpDuration(long duration) {
-        this.expDuration = duration;
-    }
-
-    /**
-     * Accessor method for the worked time of the Entry.
-     * Does not account for currently running time - only recorded stopwatch epochs
-     * @return the non running worked time
-     */
-    public long getWorkedTime() {
-        return workedTime;
-    }
-
-    /**
-     * Mutator method for setting time worked.
-     * @param workedTime the new total time worked
-     */
-    public void setWorkedTime(long workedTime) {
-        this.workedTime = workedTime;
-    }
-
-    /**
-     * Adds provided duration in seconds to existing workedTime.
-     * @param workedTime the additional time to be added
-     */
-    public void addWorkedTime(long workedTime) {
-        this.workedTime += workedTime;
-    }
-
-    /**
-     * Get the last modification date of the task.
-     * @return the Calendar date the task was last updated
-     */
-    public Calendar getUpdatedAt() {
-        return updatedAt;
-    }
-
-    /**
-     * Set the last modification date of the task
-     * @param updatedAt the time it was changed
-     */
-    public void setUpdatedAt(Calendar updatedAt) {
-        this.updatedAt = updatedAt;
-    }
-
-    /**
-     * Get the time work last started
-     * @return the time work last started
-     */
-    public Calendar getLastWorkStartAt() {
-        return lastWorkStartAt;
-    }
-
-    /**
-     * Set the time work last started
-     * @param lastWorkStartAt the time work last started
-     */
-    public void setLastWorkStartAt(Calendar lastWorkStartAt) {
-        this.lastWorkStartAt = lastWorkStartAt;
-    }
-
-    /**
-     * Accessor method for user
-     * @return the name of the user
-     */
-    public String getUser() {
-        return user;
-    }
-
-    /**
-     * Mutator method for user
-     * @param user the new name of the user
-     */
-    public void setUser(String user) {
-        this.user = user;
-    }
-
-    /**
-     * Check whether the Task is finished
-     * @return true if finished, false if not
-     */
-    public Boolean getFinished() {
-        return isFinished;
-    }
-
-    /**
      * Start Working on this Task.
      */
     public void start() {
-        if (this.lastWorkStartAt == null && !this.getFinished()) {
+        if (this.lastWorkStartAt == null && !this.getIsFinished()) {
             Calendar now = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
             this.setLastWorkStartAt(now);
         } else {
-            throw new TaskInProgressException("Task", "id", this.getId());
+            throw new TaskInProgressException("Task", "taskId", this.getTaskId());
         }
     }
 
@@ -294,12 +153,12 @@ public class Task implements Serializable {
      */
     public void stop() {
 
-        if (this.lastWorkStartAt != null && !this.getFinished()) {
+        if (this.lastWorkStartAt != null && !this.getIsFinished()) {
             Calendar current = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
             this.addWorkedTime(getDurationInSeconds(this.getLastWorkStartAt(), current));
             this.setLastWorkStartAt(null);
         } else {
-            throw new TaskNotInProgressException("Task", "id", this.getId());
+            throw new TaskNotInProgressException("Task", "taskId", this.getTaskId());
         }
     }
 
@@ -323,6 +182,15 @@ public class Task implements Serializable {
     }
 
     /**
+     * Adds provided duration in seconds to existing workedTime.
+     * @param workedTime the additional time to be added
+     */
+    public void addWorkedTime(long workedTime) {
+        this.workedTime += workedTime;
+    }
+
+
+    /**
      * Equals method
      * @param o the object to be tested
      * @return true if equal, false if not
@@ -332,8 +200,86 @@ public class Task implements Serializable {
         if (!(o instanceof Task)) {
             return false;
         }
-        return this.getId() != null && this.getId().equals(((Task) o).getId());
+        return this.getTaskId() != null && this.getTaskId().equals(((Task) o).getTaskId());
     }
 
+    public UUID getTaskId() {
+        return taskId;
+    }
 
+    public void setTaskId(UUID taskId) {
+        this.taskId = taskId;
+    }
+
+    public User getOwner() {
+        return owner;
+    }
+
+    public void setOwner(User owner) {
+        this.owner = owner;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public String getBody() {
+        return body;
+    }
+
+    public void setBody(String body) {
+        this.body = body;
+    }
+
+    public Calendar getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(Calendar createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public Calendar getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(Calendar updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+    public Calendar getLastWorkStartAt() {
+        return lastWorkStartAt;
+    }
+
+    public void setLastWorkStartAt(Calendar lastWorkStartAt) {
+        this.lastWorkStartAt = lastWorkStartAt;
+    }
+
+    public Long getExpDuration() {
+        return expDuration;
+    }
+
+    public void setExpDuration(Long expDuration) {
+        this.expDuration = expDuration;
+    }
+
+    public Long getWorkedTime() {
+        return workedTime;
+    }
+
+    public void setWorkedTime(Long workedTime) {
+        this.workedTime = workedTime;
+    }
+
+    public Boolean getIsFinished() {
+        return isFinished;
+    }
+
+    public void setIsFinished(Boolean finished) {
+        isFinished = finished;
+    }
 }

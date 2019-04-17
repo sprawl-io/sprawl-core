@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.*;
 import org.thomaschen.sprawl.exception.ResourceNotFoundException;
 import org.thomaschen.sprawl.model.User;
 import org.thomaschen.sprawl.repository.UserRepository;
+import org.thomaschen.sprawl.security.Role;
 
 import javax.validation.Valid;
 import java.util.List;
@@ -39,7 +40,6 @@ public class UserController {
 
         user.setEmail(updatedDetails.getEmail());
         user.setName(updatedDetails.getName());
-
 
         User updatedUser = userRepository.save(user);
         return updatedUser;
