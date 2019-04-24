@@ -51,12 +51,30 @@ public class TaskController {
     }
 
     // Get all Tasks
+    @GetMapping("/all")
+    public List<Task> getGenuineAllTasks() {
+        return taskRepository.findAll();
+    }
+
+    // Get all Tasks
+    @GetMapping("/all/finished")
+    public List<Task> getAllFinishedTasks() {
+        return taskRepository.findByOwnerAndIsFinishedTrueOrderByCreatedAtDesc(this.getUser());
+    }
+
+    // Get all Tasks
+    @GetMapping("/all/unfinished")
+    public List<Task> getAllUnFinishedTasks() {
+        return taskRepository.findByOwnerAndIsFinishedFalseOrderByCreatedAtDesc(this.getUser());
+    }
+
+    // Get all Tasks
     @GetMapping("/")
     public List<Task> getAllTasks(@RequestParam(value="tags", required=false) String tag) {
         if (tag == null) {
-            return taskRepository.findByOwner(this.getUser());
+            return taskRepository.findByOwnerAndIsFinishedFalseOrderByCreatedAtDesc(this.getUser());
         } else {
-            return taskRepository.findAllByOwnerAndTags(this.getUser(), tag);
+            return taskRepository.findAllByOwnerAndTagsAndIsFinishedFalseOrderByCreatedAtDesc(this.getUser(), tag);
         }
     }
 
@@ -129,18 +147,13 @@ public class TaskController {
         Task task = taskRepository.findByTaskId(taskId)
                 .orElseThrow(() -> new ResourceNotFoundException("Task", "id", taskId));
 
-        User user = userRepository.findByUsername(this.getUser().getUsername())
-                .orElseThrow( () -> new ResourceNotFoundException("User", "username", this.getUser().getUsername()));
-
         if (task.getIsFinished()) {
             throw new TaskFinishedException("Task", "id", taskId);
         } else {
+            // Mark Task as Finished
             task.finish();
-            user.deleteTask(task);
 
-            // Remove task from user's tasks
-            userRepository.save(user);
-            taskRepository.delete(task);
+            taskRepository.save(task);
             return ResponseEntity.ok().build();
 
         }
