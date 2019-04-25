@@ -107,6 +107,7 @@ public class TaskController {
         task.setBody(taskDetails.getBody());
         task.setExpDuration(taskDetails.getExpDuration());
         task.setWorkedTime(taskDetails.getWorkedTime());
+        task.setUpdatedAt(taskDetails.getUpdatedAt());
 
         Task updatedTask = taskRepository.save(task);
         return updatedTask;
@@ -174,6 +175,19 @@ public class TaskController {
 
         return ResponseEntity.ok().build();
     }
+
+    // Get Statistics
+    @GetMapping("/stats")
+    public String getStats() {
+        User user = userRepository.findByUsername(this.getUser().getUsername())
+                .orElseThrow( () -> new ResourceNotFoundException("User", "username", this.getUser().getUsername()));
+
+        List<Task> tasks = taskRepository.findByOwnerAndIsFinishedTrueOrderByCreatedAtDesc(user);
+
+        return Task.getAggregateStatistics(tasks);
+    }
+
+
 
 
 
