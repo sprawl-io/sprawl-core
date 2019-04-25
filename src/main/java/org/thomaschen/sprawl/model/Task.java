@@ -235,7 +235,7 @@ public class Task implements Serializable {
         return totalUnder;
     }
 
-    public static double getAverageWorkedTime(List<Task> tasks) {
+    public static double getAverageTaskCompletionTime(List<Task> tasks) {
         double avgTime = 0.0;
         for (Task task : tasks) {
             avgTime += task.getWorkedTime();
@@ -251,6 +251,29 @@ public class Task implements Serializable {
         }
 
         return estAccuracy / tasks.size();
+    }
+
+    public static double getAverageDailyWorkTime(List<Task> tasks) {
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+        sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
+        Map<String, Double> totalMap = new TreeMap<>();
+        for (Task task : tasks) {
+
+            String date = sdf.format(task.getUpdatedAt().getTime());
+
+            if (totalMap.containsKey(date)) {
+                totalMap.put(date, totalMap.get(date) + task.getWorkedTime());
+            } else {
+                totalMap.put(date, (double) task.getWorkedTime());
+            }
+        }
+
+        double sumTime = 0.0;
+        for (Map.Entry<String, Double> entry : totalMap.entrySet()) {
+            sumTime += entry.getValue();
+        }
+
+        return sumTime / totalMap.size();
     }
 
     public static double getTodaysAccuracy(List<Task> tasks) {
@@ -352,8 +375,9 @@ public class Task implements Serializable {
         stats.put("totalTasks", tasks.size());
         stats.put("totalOver", Task.getTotalOver(tasks));
         stats.put("totalUnder", Task.getTotalUnder(tasks));
-        stats.put("avgWorkedTime",Task.getAverageWorkedTime(tasks));
+        stats.put("avgTaskCompletionTime",Task.getAverageTaskCompletionTime(tasks));
         stats.put("avgEstFactor", Task.getEstAccuracy(tasks));
+        stats.put("avgDailyTaskTime", Task.getAverageDailyWorkTime(tasks));
         stats.put("todaysEstFactor", Task.getTodaysAccuracy(tasks));
         stats.put("todaysWorkedTime", Task.getTodaysWorkedTime(tasks));
 
