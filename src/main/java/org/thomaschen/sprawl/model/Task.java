@@ -5,6 +5,11 @@ import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import com.fasterxml.jackson.annotation.JsonIdentityReference;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.ObjectIdGenerators;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.swagger.annotations.ApiModelProperty;
 import org.hibernate.annotations.GenericGenerator;
 import org.springframework.data.annotation.CreatedDate;
@@ -19,12 +24,9 @@ import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
 
 import java.io.Serializable;
+import java.text.SimpleDateFormat;
 import java.time.temporal.ChronoUnit;
-import java.util.Calendar;
-
-import java.util.List;
-import java.util.TimeZone;
-import java.util.UUID;
+import java.util.*;
 
 
 @Entity
@@ -207,6 +209,175 @@ public class Task implements Serializable {
         }
         return this.getTaskId() != null && this.getTaskId().equals(((Task) o).getTaskId());
     }
+
+
+    public static int getTotalOver(List<Task> tasks) {
+        int totalOver = 0;
+
+        for (Task task : tasks) {
+            if (task.getWorkedTime() > task.getExpDuration()) {
+                totalOver++;
+            }
+        }
+
+        return totalOver;
+    }
+
+    public static int getTotalUnder(List<Task> tasks) {
+        int totalUnder = 0;
+
+        for (Task task : tasks) {
+            if (task.getWorkedTime() < task.getExpDuration()) {
+                totalUnder++;
+            }
+        }
+
+        return totalUnder;
+    }
+
+    public static double getAverageWorkedTime(List<Task> tasks) {
+        double avgTime = 0.0;
+        for (Task task : tasks) {
+            avgTime += task.getWorkedTime();
+        }
+
+        return avgTime/tasks.size();
+    }
+
+    public static double getEstAccuracy(List<Task> tasks) {
+        double estAccuracy = 0.0;
+        for (Task task : tasks) {
+            estAccuracy += (double) task.getWorkedTime()/ (double)task.getExpDuration();
+        }
+
+        return estAccuracy / tasks.size();
+    }
+
+    public static double getTodaysAccuracy(List<Task> tasks) {
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+        sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
+
+        String today = sdf.format(Calendar.getInstance(TimeZone.getTimeZone("UTC")).getTime());
+
+        double estAccuracy = 0.0;
+        int count = 0;
+        for (Task task : tasks) {
+            String date = sdf.format(task.getUpdatedAt().getTime());
+            if (today.equals(date)) {
+                estAccuracy += (double) task.getWorkedTime()/ (double)task.getExpDuration();
+                count++;
+            }
+        }
+
+        return estAccuracy / count;
+    }
+
+    public static double getTodaysWorkedTime(List<Task> tasks) {
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+        sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
+
+        String today = sdf.format(Calendar.getInstance(TimeZone.getTimeZone("UTC")).getTime());
+
+        double totalWorkedTime = 0.0;
+        for (Task task : tasks) {
+            String date = sdf.format(task.getUpdatedAt().getTime());
+            if (today.equals(date)) {
+                totalWorkedTime += task.getWorkedTime();
+            }
+        }
+
+        return totalWorkedTime;
+    }
+
+    public static ArrayNode getTimeSeriesOfTaskEstFactor(List<Task> tasks) {
+        ObjectMapper mapper = new ObjectMapper();
+        ArrayNode arrayNode = mapper.createArrayNode();
+
+        double runSumEstFactor = 0.0;
+        int runTotal = 0;
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
+        sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
+
+
+        for (Task task : tasks) {
+            JsonNode taskDataPt = mapper.createObjectNode();
+
+            double currEstFactor = (double) task.getWorkedTime() / (double) task.getExpDuration();
+            runSumEstFactor = (runSumEstFactor * runTotal + currEstFactor) / (runTotal + 1);
+            String date = sdf.format(task.getCreatedAt().getTime());
+
+            ((ObjectNode) taskDataPt).put("name", date);
+            ((ObjectNode) taskDataPt).put("value", runSumEstFactor);
+
+            arrayNode.add(taskDataPt);
+
+            runTotal++;
+        }
+
+        return arrayNode;
+    }
+
+    public static ArrayNode getTimeSeriesOfTaskCompletion(List<Task> tasks) {
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+        sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
+        Map<String, Integer> totalMap = new TreeMap<>();
+        for (Task task : tasks) {
+
+            String date = sdf.format(task.getUpdatedAt().getTime());
+
+            if (totalMap.containsKey(date)) {
+                totalMap.put(date, totalMap.get(date) + 1);
+            } else {
+                totalMap.put(date, 1);
+            }
+        }
+
+        ObjectMapper mapper = new ObjectMapper();
+        ArrayNode arrayNode = mapper.createArrayNode();
+        for(Map.Entry<String, Integer> entry : totalMap.entrySet()) {
+            ObjectNode taskDataPt = mapper.createObjectNode();
+            taskDataPt.put("name", entry.getKey());
+            taskDataPt.put("value", entry.getValue());
+            arrayNode.add(taskDataPt);
+        }
+
+        return arrayNode;
+    }
+
+    public static String getAggregateStatistics(List<Task> tasks) {
+        ObjectMapper mapper = new ObjectMapper();
+
+        ObjectNode stats = mapper.createObjectNode();
+
+        stats.put("totalTasks", tasks.size());
+        stats.put("totalOver", Task.getTotalOver(tasks));
+        stats.put("totalUnder", Task.getTotalUnder(tasks));
+        stats.put("avgWorkedTime",Task.getAverageWorkedTime(tasks));
+        stats.put("avgEstFactor", Task.getEstAccuracy(tasks));
+        stats.put("todaysEstFactor", Task.getTodaysAccuracy(tasks));
+        stats.put("todaysWorkedTime", Task.getTodaysWorkedTime(tasks));
+
+        ArrayNode taskEstPts = Task.getTimeSeriesOfTaskEstFactor(tasks);
+        ArrayNode totalPts = Task.getTimeSeriesOfTaskCompletion(tasks);
+
+
+        stats.putArray("taskEstPts");
+        stats.set("taskEstPts", taskEstPts);
+
+        stats.putArray("totalPts");
+        stats.set("totalPts", totalPts);
+
+        String statsStr = "";
+        try {
+            statsStr = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(stats);
+        } catch (JsonProcessingException jpe) {
+            System.err.println(jpe.toString());
+        }
+
+        return statsStr;
+    }
+
+
 
     public UUID getTaskId() {
         return taskId;
