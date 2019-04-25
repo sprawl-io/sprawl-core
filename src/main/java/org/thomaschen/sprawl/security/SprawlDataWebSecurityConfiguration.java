@@ -10,12 +10,17 @@ import org.springframework.security.config.annotation.web.configuration.WebSecur
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.thomaschen.sprawl.model.User;
+import org.thomaschen.sprawl.repository.UserRepository;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
+import java.util.Properties;
 
 @Configuration
 @EnableWebSecurity
@@ -23,10 +28,19 @@ public class SprawlDataWebSecurityConfiguration extends WebSecurityConfigurerAda
     private static String REALM="SPRAWL";
 
     @Autowired
+    UserRepository userRepository;
+
+    @Autowired
     public void configureGlobalSecurity(AuthenticationManagerBuilder auth) throws Exception {
-        auth.inMemoryAuthentication().withUser("user1").password(passwordEncoder().encode("abc123")).roles(Role.USER.getText());
-        auth.inMemoryAuthentication().withUser("user2").password(passwordEncoder().encode("abc123")).roles(Role.USER.getText());
+        List<User> users = userRepository.findAll();
+
+        for (User user : users) {
+            auth.inMemoryAuthentication().withUser(user.getUsername()).password(passwordEncoder().encode(user.getPassword())).roles(Role.USER.getText());
+        }
+
         auth.inMemoryAuthentication().withUser("admin1").password(passwordEncoder().encode("abc123")).roles(Role.ADMIN.getText());
+
+        auth.userDetailsService(inMemoryUserDetailsManager());
     }
 
     @Override
@@ -59,6 +73,13 @@ public class SprawlDataWebSecurityConfiguration extends WebSecurityConfigurerAda
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public InMemoryUserDetailsManager inMemoryUserDetailsManager() {
+        final Properties users = new Properties();
+        users.put("admin", "abc123,ADMIN,enabled");
+        return new InMemoryUserDetailsManager(users);
     }
 
 

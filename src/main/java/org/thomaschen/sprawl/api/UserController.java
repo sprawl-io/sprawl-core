@@ -1,14 +1,25 @@
 package org.thomaschen.sprawl.api;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.security.SecurityProperties;
+import org.springframework.context.annotation.Bean;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
+import org.springframework.security.config.annotation.authentication.configurers.provisioning.InMemoryUserDetailsManagerConfigurer;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.web.bind.annotation.*;
 import org.thomaschen.sprawl.exception.ResourceNotFoundException;
 import org.thomaschen.sprawl.model.User;
 import org.thomaschen.sprawl.repository.UserRepository;
 import org.thomaschen.sprawl.security.Role;
+import org.thomaschen.sprawl.security.SprawlDataWebSecurityConfiguration;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
 
 import javax.validation.Valid;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -19,6 +30,13 @@ public class UserController {
     @Autowired
     UserRepository userRepository;
 
+    private final InMemoryUserDetailsManager inMemoryUserDetailsManager;
+
+    @Autowired
+    public UserController(InMemoryUserDetailsManager inMemoryUserDetailsManager) {
+        this.inMemoryUserDetailsManager = inMemoryUserDetailsManager;
+    }
+
     // Get all Users
     @GetMapping("/")
     public List<User> getAllUsers() {
@@ -28,6 +46,8 @@ public class UserController {
     // Create new User
     @PostMapping("/")
     public User createUserDetail(@Valid @RequestBody User user) {
+
+        inMemoryUserDetailsManager.createUser(org.springframework.security.core.userdetails.User.withUsername(user.getUsername()).password(new BCryptPasswordEncoder().encode(user.getPassword())).roles("USER").build());
         return userRepository.save(user);
     }
 
@@ -40,6 +60,7 @@ public class UserController {
 
         user.setEmail(updatedDetails.getEmail());
         user.setName(updatedDetails.getName());
+        user.setPassword(updatedDetails.getPassword());
 
         User updatedUser = userRepository.save(user);
         return updatedUser;
