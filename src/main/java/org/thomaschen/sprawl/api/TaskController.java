@@ -17,8 +17,7 @@ import org.thomaschen.sprawl.repository.UserRepository;
 
 import javax.validation.Valid;
 import java.security.Principal;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 @RestController
 @RequestMapping("/api/task")
@@ -50,11 +49,32 @@ public class TaskController {
         }
     }
 
+    // Get all Tasks
+    @GetMapping("/all")
+    public List<Task> getGenuineAllTasks() {
+        return taskRepository.findAll();
+    }
+
+    // Get all Tasks
+    @GetMapping("/all/finished")
+    public List<Task> getAllFinishedTasks() {
+        return taskRepository.findByOwnerAndIsFinishedTrueOrderByCreatedAtDesc(this.getUser());
+    }
+
+    // Get all Tasks
+    @GetMapping("/all/unfinished")
+    public List<Task> getAllUnFinishedTasks() {
+        return taskRepository.findByOwnerAndIsFinishedFalseOrderByCreatedAtDesc(this.getUser());
+    }
 
     // Get all Tasks
     @GetMapping("/")
-    public List<Task> getAllTasks() {
-        return taskRepository.findByOwner(this.getUser());
+    public List<Task> getAllTasks(@RequestParam(value="tags", required=false) String tag) {
+        if (tag == null) {
+            return taskRepository.findByOwnerAndIsFinishedFalseOrderByCreatedAtDesc(this.getUser());
+        } else {
+            return taskRepository.findAllByOwnerAndTagsAndIsFinishedFalseOrderByCreatedAtDesc(this.getUser(), tag);
+        }
     }
 
     // Create a Task
@@ -126,18 +146,13 @@ public class TaskController {
         Task task = taskRepository.findByTaskId(taskId)
                 .orElseThrow(() -> new ResourceNotFoundException("Task", "id", taskId));
 
-        User user = userRepository.findByUsername(this.getUser().getUsername())
-                .orElseThrow( () -> new ResourceNotFoundException("User", "username", this.getUser().getUsername()));
-
         if (task.getIsFinished()) {
             throw new TaskFinishedException("Task", "id", taskId);
         } else {
+            // Mark Task as Finished
             task.finish();
-            user.deleteTask(task);
 
-            // Remove task from user's tasks
-            userRepository.save(user);
-            taskRepository.delete(task);
+            taskRepository.save(task);
             return ResponseEntity.ok().build();
 
         }
@@ -158,6 +173,53 @@ public class TaskController {
 
         return ResponseEntity.ok().build();
     }
+
+     // Get Statistics
+    @GetMapping("/stats")
+    public String getStats() {
+        User user = userRepository.findByUsername(this.getUser().getUsername())
+                .orElseThrow( () -> new ResourceNotFoundException("User", "username", this.getUser().getUsername()));
+
+        List<Task> tasks = taskRepository.findByOwnerAndIsFinishedTrueOrderByUpdatedAtAsc(user);
+
+        return Task.getAggregateStatistics(tasks);
+    }
+
+    // Get Statistics
+    @GetMapping("/stats/timeseries/estimation")
+    public String getTimeSeriesEstimation() {
+        User user = userRepository.findByUsername(this.getUser().getUsername())
+                .orElseThrow( () -> new ResourceNotFoundException("User", "username", this.getUser().getUsername()));
+
+        List<Task> tasks = taskRepository.findByOwnerAndIsFinishedTrueOrderByUpdatedAtAsc(user);
+
+        return Task.getTimeSeriesEstimation(tasks);
+    }
+
+
+    // Get Statistics
+    @GetMapping("/stats/timeseries/totaltasks")
+    public String getTimeSeriesTotalTasks() {
+        User user = userRepository.findByUsername(this.getUser().getUsername())
+                .orElseThrow( () -> new ResourceNotFoundException("User", "username", this.getUser().getUsername()));
+
+        List<Task> tasks = taskRepository.findByOwnerAndIsFinishedTrueOrderByUpdatedAtAsc(user);
+
+        return Task.getTimeSeriesTaskCompletedTotals(tasks);
+    }
+
+
+    // Get Statistics
+    @GetMapping("/stats/timeseries/estimation/tag")
+    public String getTimeSeriesEstimationPerTag() {
+        User user = userRepository.findByUsername(this.getUser().getUsername())
+                .orElseThrow( () -> new ResourceNotFoundException("User", "username", this.getUser().getUsername()));
+
+        List<Task> allTasks = taskRepository.findByOwnerAndIsFinishedTrueOrderByUpdatedAtAsc(user);
+
+        return Task.getTimeSeriesEstimationByTag(allTasks);
+    }
+
 
 
 

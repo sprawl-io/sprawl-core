@@ -5,6 +5,11 @@ import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import com.fasterxml.jackson.annotation.JsonIdentityReference;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.ObjectIdGenerators;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.swagger.annotations.ApiModelProperty;
 import org.hibernate.annotations.GenericGenerator;
 import org.springframework.data.annotation.CreatedDate;
@@ -19,11 +24,10 @@ import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
 
 import java.io.Serializable;
+import java.lang.reflect.Array;
+import java.text.SimpleDateFormat;
 import java.time.temporal.ChronoUnit;
-import java.util.Calendar;
-
-import java.util.TimeZone;
-import java.util.UUID;
+import java.util.*;
 
 
 @Entity
@@ -107,6 +111,9 @@ public class Task implements Serializable {
     @ApiModelProperty(hidden = true)
     private Boolean isFinished = false;
 
+    @ElementCollection(fetch = FetchType.EAGER)
+    private List<String> tags;
+
     /**
      * Default Constructor
      */
@@ -119,7 +126,7 @@ public class Task implements Serializable {
      * @param body the body of the task
      * @param duration the expected time to complete the task
      */
-    public Task(final User owner, final String title, final String body, final long duration) {
+    public Task(final User owner, final String title, final String body, final long duration, final List<String> tags) {
         this.taskId = UUID.randomUUID();
         this.owner = owner;
 
@@ -134,6 +141,7 @@ public class Task implements Serializable {
         this.lastWorkStartAt = null;
 
         this.isFinished = false;
+        this.tags = tags;
     }
 
     /**
@@ -201,6 +209,301 @@ public class Task implements Serializable {
             return false;
         }
         return this.getTaskId() != null && this.getTaskId().equals(((Task) o).getTaskId());
+    }
+
+
+    public static int getTotalOver(List<Task> tasks) {
+        int totalOver = 0;
+
+        for (Task task : tasks) {
+            if (task.getWorkedTime() > task.getExpDuration()) {
+                totalOver++;
+            }
+        }
+
+        return totalOver;
+    }
+
+    public static int getTotalUnder(List<Task> tasks) {
+        int totalUnder = 0;
+
+        for (Task task : tasks) {
+            if (task.getWorkedTime() < task.getExpDuration()) {
+                totalUnder++;
+            }
+        }
+
+        return totalUnder;
+    }
+
+    public static double getAverageTaskCompletionTime(List<Task> tasks) {
+        double avgTime = 0.0;
+        for (Task task : tasks) {
+            avgTime += task.getWorkedTime();
+        }
+
+        return avgTime/tasks.size();
+    }
+
+    public static double getEstAccuracy(List<Task> tasks) {
+        double estAccuracy = 0.0;
+        for (Task task : tasks) {
+            estAccuracy += (double) task.getWorkedTime()/ (double)task.getExpDuration();
+        }
+
+        return estAccuracy / tasks.size();
+    }
+
+    public static double getAverageDailyWorkTime(List<Task> tasks) {
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+        sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
+        Map<String, Double> totalMap = new TreeMap<>();
+        for (Task task : tasks) {
+
+            String date = sdf.format(task.getUpdatedAt().getTime());
+
+            if (totalMap.containsKey(date)) {
+                totalMap.put(date, totalMap.get(date) + task.getWorkedTime());
+            } else {
+                totalMap.put(date, (double) task.getWorkedTime());
+            }
+        }
+
+        double sumTime = 0.0;
+        for (Map.Entry<String, Double> entry : totalMap.entrySet()) {
+            sumTime += entry.getValue();
+        }
+
+        return sumTime / totalMap.size();
+    }
+
+    public static double getTodaysAccuracy(List<Task> tasks) {
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+        sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
+
+        String today = sdf.format(Calendar.getInstance(TimeZone.getTimeZone("UTC")).getTime());
+
+        double estAccuracy = 0.0;
+        int count = 0;
+        for (Task task : tasks) {
+            String date = sdf.format(task.getUpdatedAt().getTime());
+            if (today.equals(date)) {
+                estAccuracy += (double) task.getWorkedTime()/ (double)task.getExpDuration();
+                count++;
+            }
+        }
+
+        return estAccuracy / count;
+    }
+
+    public static double getTodaysWorkedTime(List<Task> tasks) {
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+        sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
+
+        String today = sdf.format(Calendar.getInstance(TimeZone.getTimeZone("UTC")).getTime());
+
+        double totalWorkedTime = 0.0;
+        for (Task task : tasks) {
+            String date = sdf.format(task.getUpdatedAt().getTime());
+            if (today.equals(date)) {
+                totalWorkedTime += task.getWorkedTime();
+            }
+        }
+
+        return totalWorkedTime;
+    }
+
+    public static String getAggregateStatistics(List<Task> tasks) {
+        ObjectMapper mapper = new ObjectMapper();
+
+        ObjectNode stats = mapper.createObjectNode();
+
+        stats.put("totalTasks", tasks.size());
+        stats.put("totalOver", Task.getTotalOver(tasks));
+        stats.put("totalUnder", Task.getTotalUnder(tasks));
+        stats.put("avgTaskCompletionTime",Task.getAverageTaskCompletionTime(tasks));
+        stats.put("avgEstFactor", Task.getEstAccuracy(tasks));
+        stats.put("avgDailyTaskTime", Task.getAverageDailyWorkTime(tasks));
+        stats.put("todaysEstFactor", Task.getTodaysAccuracy(tasks));
+        stats.put("todaysWorkedTime", Task.getTodaysWorkedTime(tasks));
+
+        String statsStr = "";
+        try {
+            statsStr = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(stats);
+        } catch (JsonProcessingException jpe) {
+            System.err.println(jpe.toString());
+        }
+
+        return statsStr;
+    }
+
+    // TimeSeries Utilities
+
+    public static ArrayNode getTimeSeriesOfTaskEstFactor(List<Task> tasks, String pattern) {
+        ObjectMapper mapper = new ObjectMapper();
+        ArrayNode arrayNode = mapper.createArrayNode();
+
+        double runSumEstFactor = 0.0;
+        int runTotal = 0;
+        SimpleDateFormat sdf = new SimpleDateFormat(pattern);
+        sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
+
+
+        for (Task task : tasks) {
+            JsonNode taskDataPt = mapper.createObjectNode();
+
+            double currEstFactor = (double) task.getWorkedTime() / (double) task.getExpDuration();
+            runSumEstFactor = (runSumEstFactor * runTotal + currEstFactor) / (runTotal + 1);
+            String date = sdf.format(task.getUpdatedAt().getTime());
+
+            ((ObjectNode) taskDataPt).put("name", date);
+            ((ObjectNode) taskDataPt).put("value", runSumEstFactor);
+
+            arrayNode.add(taskDataPt);
+
+            runTotal++;
+        }
+
+        return arrayNode;
+    }
+
+    public static ArrayNode getTimeSeriesOfTaskCompletion(List<Task> tasks) {
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+        sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
+        Map<String, Integer> totalMap = new TreeMap<>();
+        for (Task task : tasks) {
+
+            String date = sdf.format(task.getUpdatedAt().getTime());
+
+            if (totalMap.containsKey(date)) {
+                totalMap.put(date, totalMap.get(date) + 1);
+            } else {
+                totalMap.put(date, 1);
+            }
+        }
+
+        ObjectMapper mapper = new ObjectMapper();
+        ArrayNode arrayNode = mapper.createArrayNode();
+        for(Map.Entry<String, Integer> entry : totalMap.entrySet()) {
+            ObjectNode taskDataPt = mapper.createObjectNode();
+            taskDataPt.put("name", entry.getKey());
+            taskDataPt.put("value", entry.getValue());
+            arrayNode.add(taskDataPt);
+        }
+
+        return arrayNode;
+    }
+
+    public static String getTimeSeriesEstimation(List<Task> tasks) {
+        ObjectMapper mapper = new ObjectMapper();
+        ObjectNode stats = mapper.createObjectNode();
+
+        ArrayNode taskEstPts = Task.getTimeSeriesOfTaskEstFactor(tasks, "yyyy-MM-dd'T'HH");
+        stats.put("name", "est. factor");
+        stats.putArray("series");
+        stats.set("series", taskEstPts);
+
+
+        String statsStr = "";
+        try {
+            statsStr = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(stats);
+        } catch (JsonProcessingException jpe) {
+            System.err.println(jpe.toString());
+        }
+
+        return '[' + statsStr + ']';
+    }
+
+    public static String getTimeSeriesTaskCompletedTotals(List<Task> tasks) {
+        ObjectMapper mapper = new ObjectMapper();
+        ObjectNode stats = mapper.createObjectNode();
+
+        ArrayNode totalPts = Task.getTimeSeriesOfTaskCompletion(tasks);
+        stats.put("name", "tasks completed");
+        stats.putArray("series");
+        stats.set("series", totalPts);
+
+
+        String statsStr = "";
+        try {
+            statsStr = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(stats);
+        } catch (JsonProcessingException jpe) {
+            System.err.println(jpe.toString());
+        }
+
+        return '[' + statsStr + ']';
+    }
+
+    public static Map getAllUniqueTags(List<Task> tasks) {
+        Map<String, Integer> tags = new TreeMap<>();
+
+        for (Task t : tasks) {
+            for (String tag : t.getTags()) {
+                if (tags.containsKey(tag.trim())) {
+                    tags.put(tag.trim(), tags.get(tag.trim()) + 1);
+                } else {
+                    tags.put(tag.trim(), 1);
+                }
+
+            }
+        }
+
+        return tags;
+    }
+
+    public static List<Task> getTasksWithTag(List<Task> tasks, String tag) {
+        List<Task> tasksWithTag = new ArrayList<Task>();
+        for (Task task : tasks) {
+            if (task.getTags().contains(tag)
+                    || task.getTags().contains(tag + ' ')
+                    || task.getTags().contains(' ' + tag)
+                    || task.getTags().contains(' ' + tag + ' ')) {
+                tasksWithTag.add(task);
+            }
+        }
+
+        return tasksWithTag;
+    }
+
+    public static String getTimeSeriesEstimationByTag(List<Task> tasks) {
+        ObjectMapper mapper = new ObjectMapper();
+        ArrayNode completeStats = mapper.createArrayNode();
+
+        Map<String, Integer> tags = Task.getAllUniqueTags(tasks);
+
+        for (Map.Entry<String, Integer> entry : tags.entrySet()) {
+            System.err.println(entry.getKey() + " : " + entry.getValue());
+        }
+
+        for (Map.Entry<String, Integer> entry : tags.entrySet()) {
+            if (entry.getValue() > 1) {
+                // Create temporary object
+                ObjectNode stats = mapper.createObjectNode();
+                // Place Timeseries Name in JSON Object
+                stats.put("name", entry.getKey());
+                // Place Named Timeseries Empty Array in JSON Object
+                stats.putArray("series");
+                // Retrieve Data Points for this Tag
+                List<Task> tasksWithThisTag = Task.getTasksWithTag(tasks, entry.getKey());
+                ArrayNode taskEstFactorPtsForThisTag = Task.getTimeSeriesOfTaskEstFactor(tasksWithThisTag, "MM-dd-yyyy");
+                // Fill Empty Array with Data Points
+                stats.set("series", taskEstFactorPtsForThisTag);
+                // Add Prepared JSON Object to JSON array of Complete Stats
+                completeStats.add(stats);
+            }
+        }
+
+
+        String statsStr = "";
+        try {
+            statsStr = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(completeStats);
+        } catch (JsonProcessingException jpe) {
+            System.err.println(jpe.toString());
+        }
+
+        System.err.println(statsStr);
+
+        return statsStr;
     }
 
     public UUID getTaskId() {
@@ -281,5 +584,21 @@ public class Task implements Serializable {
 
     public void setIsFinished(Boolean finished) {
         isFinished = finished;
+    }
+
+    public List<String> getTags() {
+        return tags;
+    }
+
+    public void setTags(List<String> tags) {
+        this.tags = tags;
+    }
+
+    public void addTag(String tag) {
+        this.tags.add(tag);
+    }
+
+    public void removeTag(String tag) {
+        this.tags.remove(tag);
     }
 }
