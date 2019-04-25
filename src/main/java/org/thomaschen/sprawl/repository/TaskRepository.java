@@ -21,6 +21,7 @@ public interface TaskRepository extends JpaRepository<Task, UUID> {
     public List<Task> findAllByOwnerAndTagsAndIsFinishedFalseOrderByCreatedAtDesc(User owner, String tag);
     public List<Task> findByOwnerAndIsFinishedFalseOrderByCreatedAtDesc(User owner);
     public List<Task> findByOwnerAndIsFinishedTrueOrderByCreatedAtDesc(User owner);
+    public List<Task> findByOwnerAndIsFinishedTrueOrderByUpdatedAtAsc(User owner);
     public List<Task> findAllByOwnerAndTagsContains(User owner, List<String> tags);
 
     @Modifying

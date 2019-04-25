@@ -17,8 +17,7 @@ import org.thomaschen.sprawl.repository.UserRepository;
 
 import javax.validation.Valid;
 import java.security.Principal;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 @RestController
 @RequestMapping("/api/task")
@@ -107,7 +106,6 @@ public class TaskController {
         task.setBody(taskDetails.getBody());
         task.setExpDuration(taskDetails.getExpDuration());
         task.setWorkedTime(taskDetails.getWorkedTime());
-        task.setUpdatedAt(taskDetails.getUpdatedAt());
 
         Task updatedTask = taskRepository.save(task);
         return updatedTask;
@@ -176,17 +174,51 @@ public class TaskController {
         return ResponseEntity.ok().build();
     }
 
-    // Get Statistics
+     // Get Statistics
     @GetMapping("/stats")
     public String getStats() {
         User user = userRepository.findByUsername(this.getUser().getUsername())
                 .orElseThrow( () -> new ResourceNotFoundException("User", "username", this.getUser().getUsername()));
 
-        List<Task> tasks = taskRepository.findByOwnerAndIsFinishedTrueOrderByCreatedAtDesc(user);
+        List<Task> tasks = taskRepository.findByOwnerAndIsFinishedTrueOrderByUpdatedAtAsc(user);
 
         return Task.getAggregateStatistics(tasks);
     }
 
+    // Get Statistics
+    @GetMapping("/stats/timeseries/estimation")
+    public String getTimeSeriesEstimation() {
+        User user = userRepository.findByUsername(this.getUser().getUsername())
+                .orElseThrow( () -> new ResourceNotFoundException("User", "username", this.getUser().getUsername()));
+
+        List<Task> tasks = taskRepository.findByOwnerAndIsFinishedTrueOrderByUpdatedAtAsc(user);
+
+        return Task.getTimeSeriesEstimation(tasks);
+    }
+
+
+    // Get Statistics
+    @GetMapping("/stats/timeseries/totaltasks")
+    public String getTimeSeriesTotalTasks() {
+        User user = userRepository.findByUsername(this.getUser().getUsername())
+                .orElseThrow( () -> new ResourceNotFoundException("User", "username", this.getUser().getUsername()));
+
+        List<Task> tasks = taskRepository.findByOwnerAndIsFinishedTrueOrderByUpdatedAtAsc(user);
+
+        return Task.getTimeSeriesTaskCompletedTotals(tasks);
+    }
+
+
+    // Get Statistics
+    @GetMapping("/stats/timeseries/estimation/tag")
+    public String getTimeSeriesEstimationPerTag() {
+        User user = userRepository.findByUsername(this.getUser().getUsername())
+                .orElseThrow( () -> new ResourceNotFoundException("User", "username", this.getUser().getUsername()));
+
+        List<Task> allTasks = taskRepository.findByOwnerAndIsFinishedTrueOrderByUpdatedAtAsc(user);
+
+        return Task.getTimeSeriesEstimationByTag(allTasks);
+    }
 
 
 
