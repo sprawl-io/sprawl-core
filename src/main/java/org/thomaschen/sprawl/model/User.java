@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.ObjectIdGenerators;
 import io.swagger.annotations.ApiModelProperty;
+import org.hibernate.annotations.ColumnTransformer;
 import org.hibernate.annotations.GenericGenerator;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
@@ -61,8 +62,12 @@ public class User {
      * User's username
      */
     @Column(unique = true)
-    @ApiModelProperty(hidden = true)
     private String username;
+
+    /**
+     * User's password
+     */
+    private String password;
 
     /**
      * User's name
@@ -115,6 +120,14 @@ public class User {
         this.updatedAt = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
 
         this.tasks = new HashMap<>();
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
     }
 
     public void deleteTask(Task task) {
