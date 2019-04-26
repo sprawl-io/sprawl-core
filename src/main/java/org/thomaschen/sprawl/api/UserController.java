@@ -44,7 +44,7 @@ public class UserController {
     }
 
     // Create new User
-    @PostMapping("/")
+    @PostMapping("/register")
     public User createUserDetail(@Valid @RequestBody User user) {
 
         inMemoryUserDetailsManager.createUser(org.springframework.security.core.userdetails.User.withUsername(user.getUsername()).password(new BCryptPasswordEncoder().encode(user.getPassword())).roles("USER").build());

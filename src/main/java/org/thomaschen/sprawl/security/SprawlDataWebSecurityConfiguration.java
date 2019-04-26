@@ -52,6 +52,7 @@ public class SprawlDataWebSecurityConfiguration extends WebSecurityConfigurerAda
                 .authorizeRequests()
                 //.antMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                     .antMatchers("/api/admin/**").hasRole("ADMIN")
+                    .antMatchers("/api/user/register").permitAll()
                     .anyRequest().authenticated()
                     .and()
                 .httpBasic()
