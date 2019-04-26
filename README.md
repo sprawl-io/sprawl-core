@@ -44,5 +44,5 @@ Please refer to the [Git Flow](https://github.com/sprawl-io/sprawl-core/wiki/Git
 
 ## Versioning
 Tally adheres to Semantic Versioning 2.0.0. Learn more [here](https://semver.org/). <br>
-The current version of sprawl-core is `0.0.1`
+The current version of sprawl-core is `0.0.2`
 

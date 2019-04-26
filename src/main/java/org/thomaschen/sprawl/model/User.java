@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.ObjectIdGenerators;
 import io.swagger.annotations.ApiModelProperty;
+import org.hibernate.annotations.ColumnTransformer;
 import org.hibernate.annotations.GenericGenerator;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
@@ -21,8 +22,8 @@ import java.util.*;
 @EnableScheduling
 @JsonIgnoreProperties(value = {"createdAt", "updatedAt"},
         allowGetters = true)
-@JsonIdentityInfo(generator = ObjectIdGenerators.PropertyGenerator.class, property = "id")
-public class UserDetail {
+@JsonIdentityInfo(generator = ObjectIdGenerators.PropertyGenerator.class, property = "userId")
+public class User {
 
     /**
      * Unique identifier for a user.
@@ -32,7 +33,7 @@ public class UserDetail {
     @GenericGenerator(name = "uuid2", strategy = "uuid2")
     @Column(columnDefinition = "BINARY(16)")
     @ApiModelProperty(hidden = true)
-    private UUID id;
+    private UUID userId;
 
     /**
      * Creation Date/Time of the task.
@@ -53,36 +54,49 @@ public class UserDetail {
     private Calendar updatedAt;
 
     /**
-     * UserDetail's email
+     * User's email
      */
     private String email;
 
     /**
-     * UserDetail's username
+     * User's username
      */
     @Column(unique = true)
     private String username;
 
     /**
-     * UserDetail's name
+     * User's password
+     */
+    private String password;
+
+    /**
+     * User's name
      */
     private String name;
 
-    @NotNull
+    @ApiModelProperty(hidden = true)
     private Role role;
+
+    /**
+     * Hashmap of all messages currently on Board
+     */
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, mappedBy = "owner", fetch = FetchType.EAGER)
+    @MapKey(name = "taskId")
+    private Map<UUID, Task> tasks;
 
     /**
      * No Param Constructor
      */
-    public UserDetail() {
-
+    public User() {
+        this.userId = UUID.randomUUID();
+        this.role = Role.USER;
     }
 
     /**
      * Username Only Constructor
      */
-    public UserDetail(String username) {
-        this.id = UUID.randomUUID();
+    public User(String username) {
+        this.userId = UUID.randomUUID();
         this.username = username;
         this.role = Role.USER;
 
@@ -95,8 +109,8 @@ public class UserDetail {
      * @param email of the user
      * @param name of the user
      */
-    public UserDetail(String email, String name, String username, Role role) {
-        this.id = UUID.randomUUID();
+    public User(String email, String name, String username, Role role) {
+        this.userId = UUID.randomUUID();
         this.email = email;
         this.name = name;
         this.username = username;
@@ -104,6 +118,20 @@ public class UserDetail {
 
         this.createdAt = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
         this.updatedAt = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
+
+        this.tasks = new HashMap<>();
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    public void deleteTask(Task task) {
+        this.tasks.remove(task.getTaskId());
     }
 
     public String getEmail() {
@@ -138,31 +166,31 @@ public class UserDetail {
         this.username = username;
     }
 
-    public UUID getId() {
-        return id;
+    public UUID getUserId() {
+        return userId;
     }
 
-    public void setId(UUID id) {
-        this.id = id;
+    public void setUserId(UUID userId) {
+        this.userId = userId;
     }
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        UserDetail that = (UserDetail) o;
-        return Objects.equals(id, that.id);
+        User that = (User) o;
+        return Objects.equals(userId, that.userId);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id);
+        return Objects.hash(userId);
     }
 
     @Override
     public String toString() {
-        return "UserDetail{" +
-                "id=" + id +
+        return "User{" +
+                "userId=" + userId +
                 ", createdAt=" + createdAt +
                 ", updatedAt=" + updatedAt +
                 ", email='" + email + '\'' +

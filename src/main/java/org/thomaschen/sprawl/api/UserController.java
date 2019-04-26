@@ -1,68 +1,89 @@
 package org.thomaschen.sprawl.api;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.security.SecurityProperties;
+import org.springframework.context.annotation.Bean;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
+import org.springframework.security.config.annotation.authentication.configurers.provisioning.InMemoryUserDetailsManagerConfigurer;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.web.bind.annotation.*;
 import org.thomaschen.sprawl.exception.ResourceNotFoundException;
-import org.thomaschen.sprawl.model.UserDetail;
-import org.thomaschen.sprawl.repository.UserDetailRepository;
+import org.thomaschen.sprawl.model.User;
+import org.thomaschen.sprawl.repository.UserRepository;
+import org.thomaschen.sprawl.security.Role;
+import org.thomaschen.sprawl.security.SprawlDataWebSecurityConfiguration;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
 
 import javax.validation.Valid;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/users")
+@RequestMapping("/api/user")
 public class UserController {
 
     @Autowired
-    UserDetailRepository userDetailRepository;
+    UserRepository userRepository;
 
-    // Get all UserDetails
+    private final InMemoryUserDetailsManager inMemoryUserDetailsManager;
+
+    @Autowired
+    public UserController(InMemoryUserDetailsManager inMemoryUserDetailsManager) {
+        this.inMemoryUserDetailsManager = inMemoryUserDetailsManager;
+    }
+
+    // Get all Users
     @GetMapping("/")
-    public List<UserDetail> getAllUsers() {
-        return userDetailRepository.findAll();
+    public List<User> getAllUsers() {
+        return userRepository.findAll();
     }
 
-    // Create new UserDetail
-    @PostMapping("/")
-    public UserDetail createUserDetail(@Valid @RequestBody UserDetail userDetail) {
-        return userDetailRepository.save(userDetail);
+    // Create new User
+    @PostMapping("/register")
+    public User createUserDetail(@Valid @RequestBody User user) {
+
+        inMemoryUserDetailsManager.createUser(org.springframework.security.core.userdetails.User.withUsername(user.getUsername()).password(new BCryptPasswordEncoder().encode(user.getPassword())).roles("USER").build());
+        return userRepository.save(user);
     }
 
-    // Update UserDetail using UUID
+    // Update User using UUID
     @PutMapping("/{id}")
-    public UserDetail updateUserDetail(@PathVariable(value = "id") UUID id,
-                                   @Valid @RequestBody UserDetail updatedDetails) {
-        UserDetail userDetail = userDetailRepository.findById(id)
-                .orElseThrow( () -> new ResourceNotFoundException("UserDetail", "id", id));
+    public User updateUserDetail(@PathVariable(value = "id") UUID id,
+                                 @Valid @RequestBody User updatedDetails) {
+        User user = userRepository.findById(id)
+                .orElseThrow( () -> new ResourceNotFoundException("User", "id", id));
 
-        userDetail.setEmail(updatedDetails.getEmail());
-        userDetail.setName(updatedDetails.getName());
+        user.setEmail(updatedDetails.getEmail());
+        user.setName(updatedDetails.getName());
+        user.setPassword(updatedDetails.getPassword());
 
-
-        UserDetail updatedUserDetail = userDetailRepository.save(userDetail);
-        return updatedUserDetail;
+        User updatedUser = userRepository.save(user);
+        return updatedUser;
     }
 
-    // Get Specifc UserDetail using UUID
+    // Get Specifc User using UUID
     @GetMapping("/{id}")
-    public UserDetail getUserDetailById(@PathVariable(value = "id") UUID id) {
+    public User getUserDetailById(@PathVariable(value = "id") UUID id) {
 
-        UserDetail userDetail = userDetailRepository.findById(id)
-                .orElseThrow( () -> new ResourceNotFoundException("UserDetail", "id", id));
+        User user = userRepository.findById(id)
+                .orElseThrow( () -> new ResourceNotFoundException("User", "id", id));
 
-        return userDetail;
+        return user;
     }
 
-    // Get Specifc UserDetail using UUID
+    // Get Specifc User using UUID
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteUserById(@PathVariable(value = "id") UUID id) {
 
-        UserDetail userDetail = userDetailRepository.findById(id)
-                .orElseThrow( () -> new ResourceNotFoundException("UserDetail", "id", id));
+        User user = userRepository.findById(id)
+                .orElseThrow( () -> new ResourceNotFoundException("User", "id", id));
 
-        userDetailRepository.delete(userDetail);
+        userRepository.delete(user);
 
         return ResponseEntity.ok().build();
     }
