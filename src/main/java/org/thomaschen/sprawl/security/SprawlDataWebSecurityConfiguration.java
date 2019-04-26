@@ -90,7 +90,7 @@ public class SprawlDataWebSecurityConfiguration extends WebSecurityConfigurerAda
         configuration.setAllowedOrigins(Collections.unmodifiableList(
                 Arrays.asList("*")));
         configuration.setAllowedMethods(Collections.unmodifiableList(
-                Arrays.asList("GET","POST","PUT","DELETE")));
+                Arrays.asList("GET","POST","PUT","DELETE","OPTIONS")));
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         configuration.setAllowCredentials(true);
         configuration.setAllowedHeaders(Collections.unmodifiableList(
